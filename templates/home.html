@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Welcome to the Flight Booking App</h2>
+
+<h3>Upcoming Hot Flights</h3>
+<ul>
+    {% for flight in flights %}
+        <li>
+           
+            </div>
+        </li>
+    {% else %}
+        <li>No upcoming flights available.</li>
+    {% endfor %}
+</ul>
+
+{% if not current_user.is_authenticated %}
+    <p><a href="{{ url_for('register') }}">Register</a> or <a href="{{ url_for('login') }}">Log in</a> to book a flight!</p>
+{% endif %}
+{% endblock %}
