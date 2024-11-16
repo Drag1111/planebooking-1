@@ -130,4 +130,24 @@ def reserve(flight_id):
     return redirect(url_for('profile'))
 
 
+@app.route('/delete_reservation/<int:reservation_id>', methods=['POST'])
+@login_required
+def delete_reservation(reservation_id):
+    reservation = Reservation.query.get_or_404(reservation_id)
+    
+    if reservation.user_id != current_user.id:
+        flash('You do not have permission to delete this reservation.')
+        return redirect(url_for('profile'))
+    
+    flight = Flight.query.get(reservation.flight_id)
+    flight.available_seats.append(reservation.seat_number)
+    flag_modified(flight, "available_seats")  
+    
+    db.session.delete(reservation)
+    db.session.commit()
+    
+    flash('Reservation deleted successfully.')
+    return redirect(url_for('profile'))
+
+
 
