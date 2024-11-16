@@ -44,3 +44,47 @@ def add_sample_flights():
             db.session.add(new_flight)
         db.session.commit()
         print("Sample flights added successfully!")
+
+def reset_database():
+    with app.app_context(): 
+        db.drop_all()  
+        db.create_all()  
+        add_sample_flights() 
+
+reset_database()
+
+@app.route('/')
+def home():
+    
+    nearest_flights = Flight.query.filter(
+        Flight.date >= datetime.now().strftime('%Y-%m-%d')
+    ).order_by(Flight.date.asc()).limit(3).all()
+
+    return render_template('home.html', flights=nearest_flights)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
+        new_user = User(username=form.username.data, password=hashed_password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        login_user(new_user)
+        
+        flash('Registration successful! You are now logged in.')
+        return redirect(url_for('home'))
+    return render_template('register.html', form=form)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user and check_password_hash(user.password, form.password.data):
+            login_user(user)
+            return redirect(url_for('profile'))
+        flash('Invalid username or password')
+    return render_template('login.html', form=form)
