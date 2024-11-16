@@ -95,3 +95,12 @@ def login():
 def profile():
     user_reservations = Reservation.query.filter_by(user_id=current_user.id).all()
     return render_template('profile.html', name=current_user.username, reservations=user_reservations)
+
+@app.route('/flights')
+@login_required
+def flights():
+    flights = Flight.query.all()
+    return render_template('flights.html', flights=flights)
+
+
+
