@@ -88,3 +88,10 @@ def login():
             return redirect(url_for('profile'))
         flash('Invalid username or password')
     return render_template('login.html', form=form)
+
+
+@app.route('/profile')
+@login_required
+def profile():
+    user_reservations = Reservation.query.filter_by(user_id=current_user.id).all()
+    return render_template('profile.html', name=current_user.username, reservations=user_reservations)
