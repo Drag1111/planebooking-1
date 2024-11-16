@@ -103,4 +103,31 @@ def flights():
     return render_template('flights.html', flights=flights)
 
 
+@app.route('/reserve/<int:flight_id>', methods=['POST'])
+@login_required
+def reserve(flight_id):
+    seat_number = request.form['seat_number']
+    flight = Flight.query.get_or_404(flight_id)
+    
+    existing_reservation = Reservation.query.filter_by(user_id=current_user.id, flight_id=flight_id).first()
+    if existing_reservation:
+        flash('You already have a reservation for this flight.')
+        return redirect(url_for('flights'))
+
+    if seat_number not in flight.available_seats:
+        flash('Seat is not available. Please choose another seat.')
+        return redirect(url_for('flights'))
+    
+    flight.available_seats.remove(seat_number)
+    flag_modified(flight, "available_seats")  
+    
+    reservation = Reservation(user_id=current_user.id, flight_id=flight_id, seat_number=seat_number)
+    db.session.add(reservation)
+    
+    db.session.commit()
+    
+    flash('Seat reserved successfully!')
+    return redirect(url_for('profile'))
+
+
 
