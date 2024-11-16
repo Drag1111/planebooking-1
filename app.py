@@ -150,4 +150,52 @@ def delete_reservation(reservation_id):
     return redirect(url_for('profile'))
 
 
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
+
+@app.route('/user/<int:user_id>', methods=['GET', 'PUT', 'DELETE'])
+@login_required
+def manage_user(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    if current_user.id != user_id:
+        flash("You do not have permission to manage this user.")
+        return redirect(url_for('profile'))
+
+    if request.method == 'GET':
+        return render_template('user_detail.html', user=user)
+
+    elif request.method == 'PUT':
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+
+        if username:
+            user.username = username
+        if password:
+            user.password = generate_password_hash(password)
+
+        db.session.commit()
+        flash("User updated successfully.")
+        return jsonify({"message": "User updated successfully"}), 200
+
+    elif request.method == 'DELETE':
+        db.session.delete(user)
+        db.session.commit()
+        flash('User deleted successfully.')
+        return jsonify({"message": "User deleted successfully"}), 200
+
+    return jsonify({"error": "Invalid method"}), 405
+
+
+@app.route('/flight/<int:flight_id>', methods=['GET'])
+@login_required
+def get_flight(flight_id):
+    flight = Flight.query.get_or_404(flight_id)
+    return render_template('flight_detail.html', flight=flight)
+
+
 
