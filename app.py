@@ -10,10 +10,6 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///flights.db')
 app.config['SECRET_KEY'] = 'your_secret_key'
 
-db = SQLAlchemy(app)
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
-
 @app.template_filter('pretty_date')
 def pretty_date(value):
     date_obj = datetime.strptime(value, '%Y-%m-%d')
@@ -21,7 +17,7 @@ def pretty_date(value):
     suffix = 'th' if 11 <= day <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
     return date_obj.strftime(f'%d{suffix} of %B %Y').lstrip('0') 
 
-@login_manager.user_loader
+
 def load_user(user_id):
     return User.query.get(int(user_id))
 
@@ -30,4 +26,65 @@ from forms import RegisterForm, LoginForm
 from flask import render_template
 from datetime import datetime
 
+def add_sample_flights():
+    if not Flight.query.first(): 
+        flights_data = [
+            {"origin": "New York", "destination": "London", "date": "2024-12-15", "available_seats": ["1A", "1B", "1C", "1D", "2A", "2B"]},
+            {"origin": "Paris", "destination": "Tokyo", "date": "2024-12-20", "available_seats": ["1A", "1B", "1C", "2A", "2B"]},
+            {"origin": "Los Angeles", "destination": "Sydney", "date": "2024-12-25", "available_seats": ["1A", "1B", "2A", "2B", "3A"]},
+            {"origin": "Dubai", "destination": "Moscow", "date": "2024-12-30", "available_seats": ["1A", "1B", "1C", "2A", "2B", "2C"]},
+        ]
+        for flight in flights_data:
+            new_flight = Flight(
+                origin=flight["origin"],
+                destination=flight["destination"],
+                date=flight["date"],
+                available_seats=flight["available_seats"]
+            )
+            db.session.add(new_flight)
+        db.session.commit()
+        print("Sample flights added successfully!")
 
+def reset_database():
+    with app.app_context(): 
+        db.drop_all()  
+        db.create_all()  
+        add_sample_flights() 
+
+reset_database()
+
+@app.route('/')
+def home():
+    
+    nearest_flights = Flight.query.filter(
+        Flight.date >= datetime.now().strftime('%Y-%m-%d')
+    ).order_by(Flight.date.asc()).limit(3).all()
+
+    return render_template('home.html', flights=nearest_flights)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
+        new_user = User(username=form.username.data, password=hashed_password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        login_user(new_user)
+        
+        flash('Registration successful! You are now logged in.')
+        return redirect(url_for('home'))
+    return render_template('register.html', form=form)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user and check_password_hash(user.password, form.password.data):
+            login_user(user)
+            return redirect(url_for('profile'))
+        flash('Invalid username or password')
+    return render_template('login.html', form=form)
